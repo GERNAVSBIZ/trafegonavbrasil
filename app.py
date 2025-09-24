@@ -9,22 +9,23 @@ import os
 import json
 import firebase_admin
 from firebase_admin import credentials, auth, firestore
-# from weasyprint import HTML # DESATIVADO TEMPORARIAMENTE
+# from weasyprint import HTML # Funcionalidade de PDF permanece desativada
 
 app = Flask(__name__)
 db = None
 try:
+    # Esta é a parte que vai funcionar no OnRender, lendo a variável de ambiente
     creds_json_str = os.environ.get('FIREBASE_CREDENTIALS_JSON')
     if creds_json_str:
         creds_dict = json.loads(creds_json_str)
         cred = credentials.Certificate(creds_dict)
     else:
-        # Certifique-se de que o arquivo de credenciais está no local correto se não estiver usando variáveis de ambiente
+        # Isto é um fallback para rodar localmente, se o arquivo existir
         cred_path = 'firebase-credentials.json'
         if os.path.exists(cred_path):
             cred = credentials.Certificate(cred_path)
         else:
-            print("AVISO: Arquivo 'firebase-credentials.json' não encontrado. As funcionalidades do Firestore não estarão disponíveis.")
+            print("AVISO: Credenciais do Firebase não encontradas. Funcionalidades do banco de dados estarão limitadas.")
             cred = None
     
     if cred:
@@ -42,7 +43,7 @@ def parse_data_file(file_content, icao_code):
     for line in lines:
         line = line.strip()
         
-        if not line or line.startswith('SBIZAIZ0') or len(line) < 25:
+        if not line or len(line) < 25:
             continue
         if re.search(r'\s+(MG|V)\s+\d{4}\s*$', line):
             continue
@@ -135,14 +136,14 @@ def index():
 
 @app.route('/api/upload', methods=['POST'])
 def upload_file():
-    """ # Bloco de segurança desativado para testes
+    # Bloco de segurança REATIVADO
     try:
         auth_header = request.headers.get('Authorization')
         id_token = auth_header.split(' ').pop()
-        auth.verify_id_token(id_token)
+        decoded_token = auth.verify_id_token(id_token)
+        print(f"Upload autorizado para o usuário: {decoded_token['uid']}")
     except Exception as e:
         return jsonify({"error": "Token inválido ou expirado"}), 401
-    """
     
     files = request.files.getlist('dataFiles')
     if not files or all(f.filename == '' for f in files):
@@ -184,17 +185,15 @@ def upload_file():
     return jsonify({ "grouped_records": grouped_records })
 
 """
-# ROTA DE PDF DESATIVADA TEMPORARIAMENTE
+# ROTA DE PDF DESATIVADA
 @app.route('/api/generate_report', methods=['POST'])
 def generate_pdf_report():
-    flight_data = request.get_json()
     # ... código do PDF ...
 """
 
 @app.route('/api/save_records', methods=['POST'])
 def save_records():
-    user_id = "test_user" # Valor fixo para testes
-    """ # Bloco de segurança desativado para testes
+    # Bloco de segurança REATIVADO
     try:
         auth_header = request.headers.get('Authorization')
         id_token = auth_header.split(' ').pop()
@@ -202,7 +201,6 @@ def save_records():
         user_id = decoded_token['uid']
     except Exception as e:
         return jsonify({"error": "Token inválido ou expirado"}), 401
-    """
 
     if not db:
         return jsonify({"error": "Conexão com o banco de dados não está disponível"}), 500
@@ -242,8 +240,7 @@ def save_records():
 
 @app.route('/api/get_uploads', methods=['GET'])
 def get_uploads():
-    user_id = "test_user" # Valor fixo para testes
-    """ # Bloco de segurança desativado para testes
+    # Bloco de segurança REATIVADO
     try:
         auth_header = request.headers.get('Authorization')
         id_token = auth_header.split(' ').pop()
@@ -251,10 +248,9 @@ def get_uploads():
         user_id = decoded_token['uid']
     except Exception as e:
         return jsonify({"error": "Autenticação falhou"}), 401
-    """
     
     if not db:
-        return jsonify([]), 200 # Retorna lista vazia se o DB não estiver conectado
+        return jsonify([]), 200
 
     try:
         uploads_ref = db.collection('flight_uploads')
@@ -274,8 +270,7 @@ def get_uploads():
 
 @app.route('/api/get_records/<upload_id>', methods=['GET'])
 def get_records(upload_id):
-    user_id = "test_user" # Valor fixo para testes
-    """ # Bloco de segurança desativado para testes
+    # Bloco de segurança REATIVADO
     try:
         auth_header = request.headers.get('Authorization')
         id_token = auth_header.split(' ').pop()
@@ -283,7 +278,6 @@ def get_records(upload_id):
         user_id = decoded_token['uid']
     except Exception as e:
         return jsonify({"error": "Autenticação falhou"}), 401
-    """
     try:
         upload_doc = db.collection('flight_uploads').document(upload_id).get()
         if not upload_doc.exists or upload_doc.to_dict()['userId'] != user_id:
@@ -308,8 +302,7 @@ def delete_collection(coll_ref, batch_size):
 
 @app.route('/api/delete_upload/<upload_id>', methods=['DELETE'])
 def delete_upload(upload_id):
-    user_id = "test_user" # Valor fixo para testes
-    """ # Bloco de segurança desativado para testes
+    # Bloco de segurança REATIVADO
     try:
         auth_header = request.headers.get('Authorization')
         id_token = auth_header.split(' ').pop()
@@ -317,7 +310,6 @@ def delete_upload(upload_id):
         user_id = decoded_token['uid']
     except Exception as e:
         return jsonify({"error": "Autenticação falhou"}), 401
-    """
     try:
         upload_ref = db.collection('flight_uploads').document(upload_id)
         upload_doc = upload_ref.get()
@@ -335,8 +327,7 @@ def delete_upload(upload_id):
 
 @app.route('/api/get_aggregated_data', methods=['GET'])
 def get_aggregated_data():
-    user_id = "test_user" # Valor fixo para testes
-    """ # Bloco de segurança desativado para testes
+    # Bloco de segurança REATIVADO
     try:
         auth_header = request.headers.get('Authorization')
         id_token = auth_header.split(' ').pop()
@@ -344,7 +335,7 @@ def get_aggregated_data():
         user_id = decoded_token['uid']
     except Exception as e:
         return jsonify({"error": "Autenticação falhou"}), 401
-    """
+    
     start_date_str = request.args.get('start_date')
     end_date_str = request.args.get('end_date')
     if not start_date_str or not end_date_str:
@@ -370,5 +361,7 @@ def get_aggregated_data():
         print(f"ERRO ao agregar dados: {e}")
         return jsonify({"error": "Não foi possível processar a solicitação."}), 500
 
+# Este bloco só é executado quando você roda 'python app.py' localmente.
+# O Gunicorn não executa este bloco.
 if __name__ == '__main__':
     app.run(debug=True)
