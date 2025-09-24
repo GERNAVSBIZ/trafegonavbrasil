@@ -19,26 +19,27 @@
     </style>
 </head>
 <body>
-    <div id="login-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50"><div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm text-center"><h2 class="text-2xl font-bold mb-4 text-gray-800">Acesso ao Sistema</h2><p class="text-gray-600 mb-6">Por favor, faça login para continuar.</p><form id="loginForm" class="space-y-4"><input type="email" id="email" placeholder="Seu e-mail" required class="w-full px-4 py-2 border rounded-lg"><input type="password" id="password" placeholder="Sua senha" required class="w-full px-4 py-2 border rounded-lg"><button type="submit" class="w-full btn-primary text-white font-semibold py-3 px-4 rounded-xl">Entrar</button></form><p id="login-error" class="text-red-500 mt-4 text-sm"></p></div></div><div id="user-info" class="hidden no-print fixed top-5 right-5 glass-dark text-white py-2 px-4 rounded-xl shadow-lg z-50 flex items-center gap-4"><span id="user-email" class="text-sm"></span><button id="logoutButton" class="bg-red-500 hover:bg-red-600 rounded-full w-8 h-8 flex items-center justify-center"><i data-lucide="log-out" class="w-4 h-4 text-white"></i></button></div><div id="main-app" class="hidden"><div id="app" class="relative z-10 container mx-auto p-4 md:p-6 lg:p-8 max-w-7xl"><header class="glass rounded-2xl p-6 mb-8 card-hover animate-fadeInUp"><div class="flex flex-wrap items-center justify-between gap-4"><div class="flex items-center"><div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center mr-4 animate-pulse-custom no-print"><i data-lucide="plane" class="w-6 h-6 text-white"></i></div><div><h1 class="text-3xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">Análise de Malha Aérea</h1><p class="text-gray-600 text-sm">Sistema Avançado de Monitoramento</p><p id="data-period-display" class="text-sm text-indigo-800 font-medium mt-1"></p></div></div><div class="flex items-center space-x-2"><div class="w-3 h-3 bg-green-400 rounded-full animate-pulse no-print"></div><span class="text-sm text-gray-600">Sistema Online</span></div></div></header><main class="grid grid-cols-1 xl:grid-cols-4 gap-8"></main></div></div>
+    <div id="login-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50"><div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm text-center"><h2 class="text-2xl font-bold mb-4 text-gray-800">Acesso ao Sistema</h2><p class="text-gray-600 mb-6">Por favor, faça login para continuar.</p><form id="loginForm" class="space-y-4"><input type="email" id="email" placeholder="Seu e-mail" required class="w-full px-4 py-2 border rounded-lg"><input type="password" id="password" placeholder="Sua senha" required class="w-full px-4 py-2 border rounded-lg"><button type="submit" class="w-full btn-primary text-white font-semibold py-3 px-4 rounded-xl">Entrar</button></form><p id="login-error" class="text-red-500 mt-4 text-sm"></p></div></div><div id="user-info" class="hidden no-print fixed top-5 right-5 glass-dark text-white py-2 px-4 rounded-xl shadow-lg z-50 flex items-center gap-4"><span id="user-email" class="text-sm"></span><button id="logoutButton" class="bg-red-500 hover:bg-red-600 rounded-full w-8 h-8 flex items-center justify-center"><i data-lucide="log-out" class="w-4 h-4 text-white"></i></button></div><div id="main-app" class="hidden"><div id="app" class="relative z-10 container mx-auto p-4 md:p-6 lg:p-8 max-w-7xl"><header class="glass rounded-2xl p-6 mb-8 card-hover animate-fadeInUp"><div class="flex flex-wrap items-center justify-between gap-4"><div class="flex items-center"><div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center mr-4 animate-pulse-custom no-print"><i data-lucide="plane" class="w-6 h-6 text-white"></i></div><div><h1 class="text-3xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">Análise de Malha Aérea</h1><p class="text-gray-600 text-sm">Sistema Avançado de Monitoramento</p><p id="data-period-display" class="text-sm text-indigo-800 font-medium mt-1"></p></div></div><div class="flex items-center space-x-2"><div class="w-3 h-3 bg-green-400 rounded-full animate-pulse no-print"></div><span class="text-sm text-gray-600">Sistema Online</span></div></div></header><main class="grid grid-cols-1 xl:grid-cols-4 gap-8"><!-- Conteúdo principal aqui --></main></div></div>
     
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             // ==================================================================
-            // ATUALIZE AQUI: Cole o objeto firebaseConfig do seu NOVO projeto
+            // ATUALIZADO: Configuração do seu NOVO projeto Firebase
             // ==================================================================
             const firebaseConfig = {
-                apiKey: "COLE_SUA_NOVA_API_KEY_AQUI",
-                authDomain: "SEU_NOVO_PROJETO.firebaseapp.com",
-                projectId: "SEU_NOVO_PROJETO_ID",
-                storageBucket: "SEU_NOVO_PROJETO.appspot.com",
-                messagingSenderId: "SEU_NOVO_SENDER_ID",
-                appId: "SEU_NOVO_APP_ID"
+                apiKey: "AIzaSyB2a4rPCyDEFhfSbbEJaD_5_78Oe69upMY",
+                authDomain: "trafegonavbrasil.firebaseapp.com",
+                projectId: "trafegonavbrasil",
+                storageBucket: "trafegonavbrasil.firebasestorage.app",
+                messagingSenderId: "406128200893",
+                appId: "1:406128200893:web:93722521344fdd60cd7bd4",
+                measurementId: "G-8LFLG5E8KS"
             };
             
             firebase.initializeApp(firebaseConfig);
             const auth = firebase.auth();
 
-            // O resto do script permanece o mesmo da versão anterior
+            // O resto do script permanece o mesmo da versão anterior, com o login reativado.
             // ... (Lógica de login, declaração de variáveis, funções de gráficos, etc.) ...
             const loginOverlay = document.getElementById('login-overlay');
             const mainApp = document.getElementById('main-app');
@@ -63,8 +64,30 @@
             });
             loginForm.addEventListener('submit', (e) => { e.preventDefault(); const email = document.getElementById('email').value; const password = document.getElementById('password').value; loginError.textContent = ''; auth.signInWithEmailAndPassword(email, password).catch(error => { console.error('Erro de login:', error); loginError.textContent = 'E-mail ou senha inválidos.'; }); });
             logoutButton.addEventListener('click', () => { auth.signOut(); });
-            // ... (resto de todo o javascript) ...
+            // ... (O resto do JavaScript, idêntico à versão anterior) ...
         });
     </script>
 </body>
 </html>
+```
+
+### **Próximos Passos (Essencial)**
+
+1.  **Atualize o OnRender (Chave Privada):**
+    * Vá para o seu dashboard no **OnRender**.
+    * Clique no seu serviço (`trafegonavbrasil`).
+    * Vá para a aba **Environment**.
+    * Encontre a variável `FIREBASE_CREDENTIALS_JSON`.
+    * Clique em "Edit".
+    * **Apague** o valor antigo e **cole o conteúdo completo do NOVO arquivo `.json`** que você baixou do seu novo projeto Firebase.
+    * Clique em "Save Changes". Isso fará com que o OnRender reinicie seu serviço com a nova credencial de administrador.
+
+2.  **Envie o `index.html` Atualizado para o GitHub:**
+    * Salve o novo conteúdo no seu arquivo `index.html` local.
+    * Abra o terminal na pasta do seu projeto.
+    * Execute os seguintes comandos:
+        ```bash
+        git add index.html
+        git commit -m "Atualiza chaves do Firebase para o novo projeto"
+        git push origin main
+        
