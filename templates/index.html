@@ -69,25 +69,5 @@
     </script>
 </body>
 </html>
-```
 
-### **Próximos Passos (Essencial)**
 
-1.  **Atualize o OnRender (Chave Privada):**
-    * Vá para o seu dashboard no **OnRender**.
-    * Clique no seu serviço (`trafegonavbrasil`).
-    * Vá para a aba **Environment**.
-    * Encontre a variável `FIREBASE_CREDENTIALS_JSON`.
-    * Clique em "Edit".
-    * **Apague** o valor antigo e **cole o conteúdo completo do NOVO arquivo `.json`** que você baixou do seu novo projeto Firebase.
-    * Clique em "Save Changes". Isso fará com que o OnRender reinicie seu serviço com a nova credencial de administrador.
-
-2.  **Envie o `index.html` Atualizado para o GitHub:**
-    * Salve o novo conteúdo no seu arquivo `index.html` local.
-    * Abra o terminal na pasta do seu projeto.
-    * Execute os seguintes comandos:
-        ```bash
-        git add index.html
-        git commit -m "Atualiza chaves do Firebase para o novo projeto"
-        git push origin main
-        
