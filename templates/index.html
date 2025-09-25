@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análise de Malha Aérea - Sistema Avançado</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-matrix@1.1.1"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; } ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 3px; } ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; } ::-webkit-scrollbar-thumb:hover { background: #94a3b8; } body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; } .glass { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.2); } .glass-dark { background: rgba(30, 41, 59, 0.95); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); } @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } } @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } } .animate-fadeInUp { animation: fadeInUp 0.6s ease-out; } .animate-pulse-custom { animation: pulse 2s infinite; } .card-hover { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); } .card-hover:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); } .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); transition: all 0.3s ease; } .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4); } .btn-secondary { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); transition: all 0.3s ease; } .btn-secondary:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(240, 147, 251, 0.4); } .stat-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; } .stat-card-green { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); } .stat-card-orange { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); } .stat-card-purple { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); color: #1f2937; } .spinner { border-top-color: transparent; animation: spin 1s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } } #toast { transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); } .table-row:hover { background: linear-gradient(90deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%); } .chart-container { position: relative; background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(10px); }
+        .table-filter-input { width: 100%; padding: 4px 8px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 12px; }
+        .table-filter-input:focus { border-color: #667eea; outline: none; box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2); }
+    </style>
+</head>
+<body>
+    <div id="login-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50"><div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm text-center"><h2 class="text-2xl font-bold mb-4 text-gray-800">Acesso ao Sistema</h2><p class="text-gray-600 mb-6">Por favor, faça login para continuar.</p><form id="loginForm" class="space-y-4"><input type="email" id="email" placeholder="Seu e-mail" required class="w-full px-4 py-2 border rounded-lg"><input type="password" id="password" placeholder="Sua senha" required class="w-full px-4 py-2 border rounded-lg"><button type="submit" class="w-full btn-primary text-white font-semibold py-3 px-4 rounded-xl">Entrar</button></form><p id="login-error" class="text-red-500 mt-4 text-sm"></p></div></div><div id="user-info" class="hidden no-print fixed top-5 right-5 glass-dark text-white py-2 px-4 rounded-xl shadow-lg z-50 flex items-center gap-4"><span id="user-email" class="text-sm"></span><button id="logoutButton" class="bg-red-500 hover:bg-red-600 rounded-full w-8 h-8 flex items-center justify-center"><i data-lucide="log-out" class="w-4 h-4 text-white"></i></button></div><div id="main-app" class="hidden"><div id="app" class="relative z-10 container mx-auto p-4 md:p-6 lg:p-8 max-w-7xl"><header class="glass rounded-2xl p-6 mb-8 card-hover animate-fadeInUp"><div class="flex flex-wrap items-center justify-between gap-4"><div class="flex items-center"><div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center mr-4 animate-pulse-custom no-print"><i data-lucide="plane" class="w-6 h-6 text-white"></i></div><div><h1 class="text-3xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">Análise de Malha Aérea</h1><p class="text-gray-600 text-sm">Sistema Avançado de Monitoramento</p><p id="data-period-display" class="text-sm text-indigo-800 font-medium mt-1"></p></div></div><div class="flex items-center space-x-2"><div class="w-3 h-3 bg-green-400 rounded-full animate-pulse no-print"></div><span class="text-sm text-gray-600">Sistema Online</span></div></div></header><main class="grid grid-cols-1 xl:grid-cols-4 gap-8">
+    
+    <div class="xl:col-span-1 space-y-6">
+        
+        <div class="glass rounded-2xl p-6 card-hover animate-fadeInUp no-print" style="animation-delay: 0.1s"><div class="flex items-center mb-4"><div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center mr-3"><i data-lucide="upload" class="w-4 h-4 text-white"></i></div><h2 class="text-xl font-semibold text-gray-800">Upload de Dados</h2></div><form id="uploadForm" class="space-y-4"><div class="relative">
+    <input type="file" id="dataFile" accept=".dat,.dta" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" multiple webkitdirectory>
+    <div class="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-blue-400 transition-colors"><i data-lucide="folder-up" class="w-8 h-8 text-gray-400 mx-auto mb-2"></i><p id="file-upload-text" class="text-sm text-gray-600">Clique para selecionar uma pasta</p><p class="text-xs text-gray-400 mt-1">Ex: Pasta com SBIZ_...dat, SBGR_...dat</p></div></div><button id="uploadButton" type="submit" class="w-full btn-primary text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-2"><span id="button-text">Processar Ficheiro(s)</span><div id="loading-spinner" class="spinner w-5 h-5 border-4 border-white rounded-full hidden"></div></button></form>
+    
+    <div id="save-section" class="hidden mt-4 space-y-2 border-t pt-4">
+        <label for="analysisName" class="block text-sm font-medium text-gray-700">Nome da Análise</label>
+        <input type="text" id="analysisName" placeholder="Ex: Semana 38 - Nacional" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+        <button id="saveAnalysisButton" class="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-2">
+            <i data-lucide="save" class="w-4 h-4"></i>
+            <span>Salvar Análise na Nuvem</span>
+        </button>
+    </div>
+
+    </div><div class="glass rounded-2xl p-6 card-hover animate-fadeInUp no-print" style="animation-delay: 0.15s"><div class="flex items-center mb-4"><div class="w-8 h-8 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg flex items-center justify-center mr-3"><i data-lucide="history" class="w-4 h-4 text-white"></i></div><h2 class="text-xl font-semibold text-gray-800">Histórico de Análises</h2></div><div id="upload-history-list" class="space-y-2 max-h-60 overflow-y-auto pr-2"><p class="text-sm text-gray-500 text-center py-4">Carregando histórico...</p></div></div><div class="glass rounded-2xl p-6 card-hover animate-fadeInUp no-print" style="animation-delay: 0.2s"><div class="flex items-center mb-4"><div class="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center mr-3"><i data-lucide="sliders-horizontal" class="w-4 h-4 text-white"></i></div><h2 class="text-xl font-semibold text-gray-800">Painel de Controlo</h2></div><div class="space-y-4">
+        <label class="block text-sm font-medium text-gray-700">Período de Análise Salva</label>
+        <div class="space-y-2"><input type="date" id="analysisStartDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg"><input type="date" id="analysisEndDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg"></div>
+        <label for="aerodromoFilter" class="block text-sm font-medium text-gray-700">Visão da Análise</label>
+        <select id="aerodromoFilter" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+            <option value="all">Visão Macro (Todos Aeródromos)</option>
+        </select>
+        <button id="runAnalysisButton" class="w-full btn-primary text-white font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-2"><i data-lucide="bar-chart-2" class="w-4 h-4"></i><span>Analisar Período Salvo</span></button>
+        <button id="generatePdfButton" disabled class="w-full bg-gray-400 text-white font-semibold py-2 px-4 rounded-lg flex items-center justify-center gap-2 cursor-not-allowed"><i data-lucide="file-text" class="w-4 h-4"></i> Relatório PDF (desativado)</button>
+    </div></div><div class="glass rounded-2xl p-6 card-hover animate-fadeInUp" style="animation-delay: 0.3s"><div class="flex items-center mb-4"><div class="w-8 h-8 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-lg flex items-center justify-center mr-3"><i data-lucide="alert-triangle" class="w-4 h-4 text-white"></i></div><h2 class="text-xl font-semibold text-gray-800">Alertas e Insights</h2></div><ul id="anomaly-alerts-list" class="space-y-2 text-sm text-gray-600 max-h-40 overflow-y-auto pr-2 mb-4 border-b pb-4"><li>Nenhum dado carregado.</li></ul><div class="space-y-3"><div class="flex justify-between items-center"><span class="text-sm text-gray-600">Registos Carregados</span><span id="loaded-count" class="font-semibold text-blue-600">0</span></div><div class="flex justify-between items-center"><span class="text-sm text-gray-600">Última Atualização</span><span id="last-update" class="font-semibold text-gray-600">-</span></div></div></div></div><div class="xl:col-span-3 space-y-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 animate-fadeInUp" style="animation-delay: 0.4s"><div class="stat-card rounded-2xl p-6 card-hover"><div class="flex items-center justify-between"><div><p class="text-white/80 text-sm">Total de Voos</p><p id="total-voos" class="text-3xl font-bold text-white">0</p></div><i data-lucide="plane" class="w-8 h-8 text-white/60"></i></div></div><div class="stat-card-green rounded-2xl p-6 card-hover"><div class="flex items-center justify-between"><div><p class="text-white/80 text-sm">Voos Comerciais</p><p id="voos-comerciais" class="text-3xl font-bold text-white">0</p></div><i data-lucide="building" class="w-8 h-8 text-white/60"></i></div></div>
+    <div class="stat-card-orange rounded-2xl p-6 card-hover"><div class="flex items-center justify-between"><div><p class="text-white/80 text-sm">Sobrevoos</p><p id="sobrevoos" class="text-3xl font-bold text-white">0</p></div><i data-lucide="git-commit" class="w-8 h-8 text-white/60"></i></div></div>
+    <div class="stat-card-purple rounded-2xl p-6 card-hover"><div class="flex items-center justify-between"><div><p class="text-gray-700/80 text-sm">Horário de Pico</p><p id="horario-pico" class="text-3xl font-bold text-gray-800">-</p></div><i data-lucide="trending-up" class="w-8 h-8 text-gray-600"></i></div></div></div>
+
+    <div id="macro-view-charts" class="space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6"><div class="glass rounded-2xl p-6 card-hover chart-container"><h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center"><i data-lucide="bar-chart-3" class="w-5 h-5 mr-2 text-indigo-500"></i>Ranking de Aeroportos por Movimento</h3><div class="relative h-80"><canvas id="rankingAeroportosChart"></canvas></div></div><div class="glass rounded-2xl p-6 card-hover chart-container"><h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center"><i data-lucide="route" class="w-5 h-5 mr-2 text-cyan-500"></i>Top 10 Rotas Nacionais</h3><div class="relative h-80"><canvas id="topRotasChart"></canvas></div></div></div>
+        <div class="glass rounded-2xl p-6 card-hover chart-container"><h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center"><i data-lucide="layers" class="w-5 h-5 mr-2 text-amber-500"></i>Perfil Operacional (IFR vs VFR)</h3><div class="relative" style="height: 350px;"><canvas id="perfilOperacionalChart"></canvas></div></div>
+        <div class="glass rounded-2xl p-6 card-hover chart-container"><h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center"><i data-lucide="line-chart" class="w-5 h-5 mr-2 text-red-500"></i>Pulso do Tráfego Aéreo Nacional (por Dia)</h3><div class="relative" style="height: 300px;"><canvas id="pulsoTrafegoChart"></canvas></div></div>
+        <div class="glass rounded-2xl p-6 card-hover chart-container"><h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center"><i data-lucide="layout-grid" class="w-5 h-5 mr-2 text-green-500"></i>Mapa de Calor da Atividade (Hora vs Dia da Semana)</h3><div class="relative" style="height: 300px;"><canvas id="heatmapAtividadeChart"></canvas></div></div>
+    </div>
+    <div id="detailed-view-charts" class="hidden space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6"><div class="glass rounded-2xl p-6 card-hover chart-container"><h3 id="flightsByRuleChart-title" class="text-lg font-semibold text-gray-800 mb-4 flex items-center"><i data-lucide="pie-chart" class="w-5 h-5 mr-2 text-blue-500"></i> Voos por Regra</h3><div class="relative h-64"><canvas id="flightsByRuleChart"></canvas></div></div><div class="glass rounded-2xl p-6 card-hover chart-container"><h3 id="flightsByDestChart-title" class="text-lg font-semibold text-gray-800 mb-4 flex items-center"><i data-lucide="map-pin" class="w-5 h-5 mr-2 text-green-500"></i> Destinos Principais</h3><div class="relative h-64"><canvas id="flightsByDestChart"></canvas></div></div></div>
+        <div class="glass rounded-2xl p-6 card-hover chart-container"><h3 id="hourlyFlightsChart-title" class="text-lg font-semibold text-gray-800 mb-4 flex items-center"><i data-lucide="clock" class="w-5 h-5 mr-2 text-purple-500"></i> Distribuição por Horário</h3><div class="relative" style="height: 300px;"><canvas id="hourlyFlightsChart"></canvas></div></div>
+        <div class="glass rounded-2xl p-6 card-hover chart-container"><h3 id="dayOfWeekChart-title" class="text-lg font-semibold text-gray-800 mb-4 flex items-center"><i data-lucide="calendar-days" class="w-5 h-5 mr-2 text-red-500"></i> Movimento por Dia da Semana</h3><div class="relative" style="height: 300px;"><canvas id="dayOfWeekChart"></canvas></div></div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6"><div class="glass rounded-2xl p-6 card-hover chart-container"><h3 id="aircraftTypesChart-title" class="text-lg font-semibold text-gray-800 mb-4 flex items-center"><i data-lucide="plane-takeoff" class="w-5 h-5 mr-2 text-lime-500"></i> Top 5 Aeronaves</h3><div class="relative h-64"><canvas id="aircraftTypesChart"></canvas></div></div></div>
+    </div>
+    <div class="glass rounded-2xl p-6 card-hover animate-fadeInUp" style="animation-delay: 1.1s"><div class="flex flex-wrap items-center justify-between mb-6 gap-4"><h3 class="text-lg font-semibold text-gray-800 flex items-center"><i data-lucide="table" class="w-5 h-5 mr-2 text-indigo-500"></i> Registos de Voo</h3><div class="flex items-center gap-2"><button id="downloadCsvButton" class="btn-secondary text-white py-2 px-4 rounded-lg text-sm font-medium flex items-center gap-2 no-print"><i data-lucide="download" class="w-4 h-4"></i> Download CSV</button></div></div><div class="overflow-auto rounded-xl border border-gray-200" style="max-height: 500px;"><table class="w-full text-sm"><thead class="bg-gray-50 sticky top-0"><tr class="no-print"><th class="px-4 py-3 text-left font-semibold text-gray-700">Aeródromo</th><th class="px-4 py-3 text-left font-semibold text-gray-700">Data/Hora (UTC)</th><th class="px-4 py-3 text-left font-semibold text-gray-700">Matrícula</th><th class="px-4 py-3 text-left font-semibold text-gray-700">Tipo Aeronave</th><th class="px-4 py-3 text-left font-semibold text-gray-700">Tipo Voo</th><th class="px-4 py-3 text-left font-semibold text-gray-700">Origem</th><th class="px-4 py-3 text-left font-semibold text-gray-700">Destino</th><th class="px-4 py-3 text-left font-semibold text-gray-700">Regra</th><th class="px-4 py-3 text-left font-semibold text-gray-700">Pista</th></tr><tr id="table-filters" class="no-print"><th class="px-2 py-2"><input type="text" placeholder="Filtrar..." data-column="aerodromo" class="table-filter-input"></th><th class="px-2 py-2"><input type="text" placeholder="Filtrar..." data-column="timestamp" class="table-filter-input"></th><th class="px-2 py-2"><input type="text" placeholder="Filtrar..." data-column="matricula" class="table-filter-input"></th><th class="px-2 py-2"><input type="text" placeholder="Filtrar..." data-column="tipo_aeronave" class="table-filter-input"></th><th class="px-2 py-2"><input type="text" placeholder="Filtrar..." data-column="flight_class" class="table-filter-input"></th><th class="px-2 py-2"><input type="text" placeholder="Filtrar..." data-column="origem" class="table-filter-input"></th><th class="px-2 py-2"><input type="text" placeholder="Filtrar..." data-column="destino" class="table-filter-input"></th><th class="px-2 py-2"><input type="text" placeholder="Filtrar..." data-column="regra_voo" class="table-filter-input"></th><th class="px-2 py-2"><input type="text" placeholder="Filtrar..." data-column="pista" class="table-filter-input"></th></tr></thead><tbody id="dataTableBody"><tr><td colspan="9" class="text-center p-12 text-gray-500"><i data-lucide="inbox" class="w-12 h-12 mx-auto mb-4 text-gray-300"></i><p>Aguardando análise de período...</p></td></tr></tbody></table></div></div></div></main></div></div>
+    
+    <div id="toast" class="fixed top-5 right-5 glass-dark text-white py-3 px-6 rounded-xl shadow-lg opacity-0 transform translate-y-[-20px] z-50">
+        <div class="flex items-center gap-3"><i id="toast-icon" data-lucide="check-circle" class="w-5 h-5"></i><span id="toast-message"></span></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const firebaseConfig = {
+                apiKey: "AIzaSyB2a4rPCyDEFhfSbbEJaD_5_78Oe69upMY",
+                authDomain: "trafegonavbrasil.firebaseapp.com",
+                projectId: "trafegonavbrasil",
+                storageBucket: "trafegonavbrasil.firebasestorage.app",
+                messagingSenderId: "406128200893",
+                appId: "1:406128200893:web:93722521344fdd60cd7bd4",
+                measurementId: "G-8LFLG5E8KS"
+            };
+            
+            firebase.initializeApp(firebaseConfig);
+            const auth = firebase.auth();
+            
+            const loginOverlay = document.getElementById('login-overlay');
+            const mainApp = document.getElementById('main-app');
+            const loginForm = document.getElementById('loginForm');
+            const loginError = document.getElementById('login-error');
+            const userInfo = document.getElementById('user-info');
+            const userEmail = document.getElementById('user-email');
+            const logoutButton = document.getElementById('logoutButton');
+            const uploadForm = document.getElementById('uploadForm');
+            const dataFile = document.getElementById('dataFile');
+            const uploadButton = document.getElementById('uploadButton');
+            const buttonText = document.getElementById('button-text');
+            const loadingSpinner = document.getElementById('loading-spinner');
+            const tableBody = document.getElementById('dataTableBody');
+            const downloadCsvButton = document.getElementById('downloadCsvButton');
+            const uploadHistoryList = document.getElementById('upload-history-list');
+            const analysisStartDate = document.getElementById('analysisStartDate');
+            const analysisEndDate = document.getElementById('analysisEndDate');
+            const runAnalysisButton = document.getElementById('runAnalysisButton');
+            const fileUploadText = document.getElementById('file-upload-text');
+            const aerodromoFilter = document.getElementById('aerodromoFilter');
+            const macroView = document.getElementById('macro-view-charts');
+            const detailedView = document.getElementById('detailed-view-charts');
+            const tableFilters = document.querySelectorAll('#table-filters .table-filter-input');
+            const saveSection = document.getElementById('save-section');
+            const saveAnalysisButton = document.getElementById('saveAnalysisButton');
+            
+            let allFlightData = [];
+            let processedFilesData = [];
+            let savedUploadsData = [];
+            let charts = {};
+            let toastTimeoutId = null;
+
+            // ================== DEFINIÇÃO DE FUNÇÕES ==================
+
+            const showToast = (message, type = 'success', duration = 3000) => { const toast = document.getElementById('toast'); const toastMessage = document.getElementById('toast-message'); const toastIcon = document.getElementById('toast-icon'); if (toastTimeoutId) { clearTimeout(toastTimeoutId); } toastMessage.textContent = message; toastIcon.setAttribute('data-lucide', type === 'error' ? 'x-circle' : 'check-circle'); toast.className = toast.className.replace(/bg-red-500|glass-dark/g, type === 'error' ? 'bg-red-500' : 'glass-dark'); lucide.createIcons(); toast.style.opacity = '1'; toast.style.transform = 'translateY(0)'; if (duration > 0) { toastTimeoutId = setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateY(-20px)'; }, duration); } }
+            const formatDateTime = (isoString) => { if (!isoString) return '<span class="text-red-500">Inválido</span>'; try { const date = new Date(isoString); const day = String(date.getUTCDate()).padStart(2, '0'); const month = String(date.getUTCMonth() + 1).padStart(2, '0'); const year = date.getUTCFullYear(); const hours = String(date.getUTCHours()).padStart(2, '0'); const minutes = String(date.getUTCMinutes()).padStart(2, '0'); return `${day}/${month}/${year}, ${hours}:${minutes}`; } catch (e) { return '<span class="text-red-500">Inválido</span>'; } }
+            const toggleLoading = (isLoading) => { uploadButton.disabled = isLoading; buttonText.textContent = isLoading ? 'Processando...' : 'Processar Pasta'; loadingSpinner.classList.toggle('hidden', !isLoading); }
+            const updateStatus = () => { document.getElementById('loaded-count').textContent = allFlightData.length; document.getElementById('last-update').textContent = new Date().toLocaleTimeString('pt-BR'); }
+            const destroyAllCharts = () => { Object.values(charts).forEach(chart => chart?.destroy()); charts = {}; }
+
+            const fetchUploadHistory = async () => { 
+                renderUploadHistory([]); 
+                try { 
+                    const user = auth.currentUser; 
+                    if (!user) return; 
+                    const token = await user.getIdToken(); 
+                    const response = await fetch('/api/get_uploads', { headers: { 'Authorization': 'Bearer ' + token } }); 
+                    if (!response.ok) { throw new Error('Falha ao buscar histórico'); } 
+                    savedUploadsData = await response.json();
+                    renderUploadHistory(savedUploadsData); 
+                } catch (error) { 
+                    console.error('Erro ao buscar histórico:', error); 
+                    uploadHistoryList.innerHTML = '<p class="text-sm text-red-500 text-center py-4">Erro ao carregar histórico.</p>'; 
+                }
+            }
+            
+            const loadRecords = async (uploadId) => {
+                showToast('A carregar análise salva...', 'success', 0);
+                try {
+                    const user = auth.currentUser;
+                    if (!user) throw new Error("Sessão expirada.");
+                    const token = await user.getIdToken();
+                    const response = await fetch(`/api/get_records/${uploadId}`, { headers: { 'Authorization': 'Bearer ' + token } });
+                    if (!response.ok) {
+                        const err = await response.json();
+                        throw new Error(err.error || "Falha ao carregar registos");
+                    }
+                    allFlightData = await response.json();
+                    processedFilesData = []; 
+                    saveSection.classList.add('hidden'); 
+                    
+                    const selectedUpload = savedUploadsData.find(u => u.uploadId === uploadId);
+                    if (selectedUpload) {
+                        analysisStartDate.value = selectedUpload.startDate ? selectedUpload.startDate.split('T')[0] : '';
+                        analysisEndDate.value = selectedUpload.endDate ? selectedUpload.endDate.split('T')[0] : '';
+                    }
+
+                    allFlightData.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                    updateAerodromoFilter();
+                    applyFiltersAndRender();
+                    updateStatus();
+                    showToast(`${allFlightData.length} registos carregados do histórico!`, 'success');
+
+                } catch (error) {
+                    console.error('Erro ao carregar registos:', error);
+                    showToast(error.message, 'error');
+                }
+            };
+            
+            const deleteUpload = async (uploadId) => {
+                if (!confirm('Tem a certeza de que deseja apagar esta análise? Esta ação não pode ser desfeita.')) return;
+                showToast('A apagar análise...', 'success', 0);
+                try {
+                    const user = auth.currentUser;
+                    if (!user) throw new Error("Sessão expirada.");
+                    const token = await user.getIdToken();
+                    const response = await fetch(`/api/delete_upload/${uploadId}`, { 
+                        method: 'DELETE',
+                        headers: { 'Authorization': 'Bearer ' + token } 
+                    });
+                    const result = await response.json();
+                    if (!response.ok) { throw new Error(result.error || 'Falha ao apagar'); }
+                    showToast(result.message, 'success');
+                    fetchUploadHistory(); // Atualiza a lista
+                } catch (error) {
+                    console.error('Erro ao apagar:', error);
+                    showToast(error.message, 'error');
+                }
+            };
+            
+            const renderUploadHistory = (uploads) => { uploadHistoryList.innerHTML = ''; if (!uploads || uploads.length === 0) { uploadHistoryList.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">Nenhum histórico encontrado.</p>'; return; } uploads.forEach(upload => { const item = document.createElement('div'); item.className = 'p-3 rounded-lg flex justify-between items-center group hover:bg-gray-100'; item.innerHTML = `<div data-upload-id="${upload.uploadId}" class="flex-grow cursor-pointer"> <p class="font-semibold text-sm text-gray-700">${upload.analysisName}</p> <p class="text-xs text-gray-500">${upload.recordCount} registos</p> </div><button class="delete-upload-btn p-2 rounded-full hover:bg-red-100 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity" data-upload-id="${upload.uploadId}"><i data-lucide="trash-2" class="w-4 h-4"></i></button>`; uploadHistoryList.appendChild(item); }); lucide.createIcons(); }
+            const applyFiltersAndRender = () => { let tableData = [...allFlightData]; const selectedAerodromo = aerodromoFilter.value; tableFilters.forEach(input => { const column = input.dataset.column; const value = input.value.trim().toUpperCase(); if (value) { tableData = tableData.filter(f => { if (column === 'timestamp' && f.timestamp) { return formatDateTime(f.timestamp).includes(value); } return f[column]?.toUpperCase().includes(value); }); } }); renderTable(tableData); if (selectedAerodromo === 'all') { detailedView.classList.add('hidden'); macroView.classList.remove('hidden'); renderStats(allFlightData); renderAllMacroCharts(allFlightData); } else { macroView.classList.add('hidden'); detailedView.classList.remove('hidden'); const airportSpecificData = allFlightData.filter(f => f.aerodromo === selectedAerodromo); renderStats(airportSpecificData); renderDetailedCharts(airportSpecificData); } }
+            const updateAerodromoFilter = () => { const currentSelection = aerodromoFilter.value; aerodromoFilter.innerHTML = '<option value="all">Visão Macro (Todos Aeródromos)</option>'; if (allFlightData.length > 0) { const aerodromos = [...new Set(allFlightData.map(f => f.aerodromo))].filter(a => a); aerodromos.sort().forEach(a => { const option = document.createElement('option'); option.value = a; option.textContent = `Visão Detalhada: ${a}`; aerodromoFilter.appendChild(option); }); if (aerodromos.includes(currentSelection)) { aerodromoFilter.value = currentSelection; } } }
+            const renderTable = (data) => { tableBody.innerHTML = ''; if (data.length === 0) { const emptyMessage = allFlightData.length > 0 ? `<i data-lucide="search-x" class="w-12 h-12 mx-auto mb-4 text-gray-300"></i><p>Nenhum registo corresponde ao filtro.</p>` : `<i data-lucide="inbox" class="w-12 h-12 mx-auto mb-4 text-gray-300"></i><p>Aguardando análise de período...</p>`; tableBody.innerHTML = `<tr><td colspan="9" class="text-center p-12 text-gray-500">${emptyMessage}</td></tr>`; lucide.createIcons(); return; } const rows = data.map((f) => `<tr class="table-row border-b border-gray-100"><td class="px-4 py-3 font-semibold">${f.aerodromo || 'N/A'}</td><td class="px-4 py-3 font-medium">${formatDateTime(f.timestamp)}</td><td class="px-4 py-3">${f.matricula || 'N/A'}</td><td class="px-4 py-3">${f.tipo_aeronave || 'N/A'}</td><td class="px-4 py-3">${f.flight_class || 'N/A'}</td><td class="px-4 py-3">${f.origem || 'N/A'}</td><td class="px-4 py-3">${f.destino || 'N/A'}</td><td class="px-4 py-3"><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${f.regra_voo === 'IFR' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">${f.regra_voo || 'N/A'}</span></td><td class="px-4 py-3">${f.pista || '-'}</td></tr>`).join(''); tableBody.innerHTML = rows; }
+            const renderStats = (data) => { const commercialPrefixes = ['AZU', 'GLO', 'TAM']; const voosComerciais = data.filter(f => commercialPrefixes.some(p => f.matricula?.startsWith(p))).length; const sobrevoos = data.filter(f => f.aerodromo && f.origem !== f.aerodromo && f.destino !== f.aerodromo).length; let horarioPico = '-'; if (data.length > 0) { const hourlyCounts = data.reduce((acc, flight) => { if(!flight.timestamp) return acc; const hour = new Date(flight.timestamp).getUTCHours(); acc[hour] = (acc[hour] || 0) + 1; return acc; }, {}); const counts = Object.values(hourlyCounts); const hours = Object.keys(hourlyCounts); if(counts.length > 0) { const maxCount = Math.max(...counts); horarioPico = hours.filter(h => hourlyCounts[h] === maxCount).map(h => h + 'h').join(', '); } } document.getElementById('total-voos').textContent = data.length; document.getElementById('voos-comerciais').textContent = voosComerciais; document.getElementById('sobrevoos').textContent = sobrevoos; document.getElementById('horario-pico').textContent = horarioPico; }
+            const renderAllMacroCharts = (data) => { destroyAllCharts(); if (data.length === 0) return; const top15 = 15, top10 = 10; const movementsByAirport = data.reduce((acc, f) => { acc[f.aerodromo] = (acc[f.aerodromo] || 0) + 1; return acc; }, {}); const sortedAirports = Object.entries(movementsByAirport).sort(([,a],[,b]) => b-a).slice(0, top15); charts.ranking = new Chart('rankingAeroportosChart', { type: 'bar', data: { labels: sortedAirports.map(a => a[0]), datasets: [{ label: 'Movimentos', data: sortedAirports.map(a => a[1]), backgroundColor: '#667eea' }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: {display: false}} } }); const movementsByRoute = data.reduce((acc, f) => { if(f.origem && f.destino && f.origem !== f.destino) { const route = `${f.origem}-${f.destino}`; acc[route] = (acc[route] || 0) + 1; } return acc; }, {}); const sortedRoutes = Object.entries(movementsByRoute).sort(([,a],[,b]) => b-a).slice(0, top10); charts.topRotas = new Chart('topRotasChart', { type: 'bar', data: { labels: sortedRoutes.map(a => a[0]), datasets: [{ label: 'Voos', data: sortedRoutes.map(a => a[1]), backgroundColor: '#38bdf8' }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: {display: false}} } }); const profile = data.reduce((acc, f) => { if (!acc[f.aerodromo]) acc[f.aerodromo] = { IFR: 0, VFR: 0, Total: 0 }; if (f.regra_voo === 'IFR') acc[f.aerodromo].IFR++; else if (f.regra_voo === 'VFR') acc[f.aerodromo].VFR++; acc[f.aerodromo].Total++; return acc; }, {}); const sortedProfile = Object.entries(profile).sort(([,a],[,b]) => b.Total - a.Total).slice(0, top15); charts.perfil = new Chart('perfilOperacionalChart', { type: 'bar', data: { labels: sortedProfile.map(p => p[0]), datasets: [ { label: 'IFR', data: sortedProfile.map(p => p[1].IFR), backgroundColor: '#10b981' }, { label: 'VFR', data: sortedProfile.map(p => p[1].VFR), backgroundColor: '#f59e0b' } ]}, options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true } } } }); const dailyCounts = data.reduce((acc, f) => { if(f.timestamp) { const day = f.timestamp.slice(0, 10); acc[day] = (acc[day] || 0) + 1; } return acc; }, {}); const sortedDays = Object.entries(dailyCounts).sort(([a], [b]) => a.localeCompare(b)); charts.pulso = new Chart('pulsoTrafegoChart', { type: 'line', data: { labels: sortedDays.map(d => d[0]), datasets: [{ label: 'Voos', data: sortedDays.map(d => d[1]), borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', fill: true, tension: 0.2, pointRadius: 1 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { x: { type: 'time', time: { unit: 'day' } } } }}); const heatmapData = []; const daysOfWeek = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']; const activity = Array(7).fill(0).map(() => Array(24).fill(0)); data.forEach(f => { if(f.timestamp) { const date = new Date(f.timestamp); const day = date.getUTCDay(); const hour = date.getUTCHours(); activity[day][hour]++; } }); for(let day = 0; day < 7; day++) { for (let hour = 0; hour < 24; hour++) { heatmapData.push({ x: hour, y: daysOfWeek[day], v: activity[day][hour] }); } } const maxActivity = Math.max(...heatmapData.map(d=>d.v), 1); charts.heatmap = new Chart('heatmapAtividadeChart', { type: 'matrix', data: { datasets: [{ label: 'Movimentos', data: heatmapData, backgroundColor: (ctx) => { if (!ctx.raw) return 'rgba(0,0,0,0)'; const v = ctx.raw.v; const alpha = v > 0 ? 0.1 + (v / maxActivity) * 0.9 : 0; return `rgba(14, 165, 233, ${alpha})`; }, width: ({chart}) => (chart.chartArea || {}).width / 24 - 1, height: ({chart}) => (chart.chartArea || {}).height / 7 - 1 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: {display: false}, tooltip: { callbacks: { title:()=>'', label: (ctx) => `Voos: ${ctx.raw.v}` } } }, scales: { x: { type: 'linear', offset: false, grid: { display: false }, ticks: { stepSize: 2, callback: (v) => `${v}h` } }, y: { type: 'category', labels: daysOfWeek, offset: true, grid: { display: false } } } }}); }
+            const renderDetailedCharts = (data) => { destroyAllCharts(); document.getElementById('flightsByRuleChart-title').innerHTML = '<i data-lucide="pie-chart" class="w-5 h-5 mr-2 text-blue-500"></i> Voos por Regra'; document.getElementById('flightsByDestChart-title').innerHTML = '<i data-lucide="map-pin" class="w-5 h-5 mr-2 text-green-500"></i> Destinos Principais'; document.getElementById('hourlyFlightsChart-title').innerHTML = '<i data-lucide="clock" class="w-5 h-5 mr-2 text-purple-500"></i> Distribuição por Horário'; document.getElementById('dayOfWeekChart-title').innerHTML = '<i data-lucide="calendar-days" class="w-5 h-5 mr-2 text-red-500"></i> Movimento por Dia da Semana'; document.getElementById('aircraftTypesChart-title').innerHTML = '<i data-lucide="plane-takeoff" class="w-5 h-5 mr-2 text-lime-500"></i> Top 5 Aeronaves'; lucide.createIcons(); const ruleCounts = data.reduce((acc, f) => { acc[f.regra_voo] = (acc[f.regra_voo] || 0) + 1; return acc; }, {}); charts.flightsByRule = new Chart('flightsByRuleChart', { type: 'doughnut', data: { labels: Object.keys(ruleCounts), datasets: [{ data: Object.values(ruleCounts), backgroundColor: ['rgba(102, 126, 234, 0.8)','rgba(16, 163, 74, 0.8)','rgba(239, 68, 68, 0.8)','rgba(245, 158, 11, 0.8)'], borderWidth: 0, hoverOffset: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } } }); const destCounts = data.reduce((acc, f) => { acc[f.destino] = (acc[f.destino] || 0) + 1; return acc; }, {}); delete destCounts[aerodromoFilter.value]; const topDests = Object.entries(destCounts).sort(([,a], [,b]) => b - a).slice(0, 8); charts.flightsByDest = new Chart('flightsByDestChart', { type: 'bar', data: { labels: topDests.map(([dest]) => dest), datasets: [{ data: topDests.map(([,count]) => count), backgroundColor: 'rgba(102, 126, 234, 0.8)', borderRadius: 6 }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } }); const hourlyCounts = Array(24).fill(0); data.forEach(f => { if (f.timestamp) hourlyCounts[new Date(f.timestamp).getUTCHours()]++; }); charts.hourly = new Chart('hourlyFlightsChart', { type: 'line', data: { labels: Array.from({length: 24}, (_, i) => `${i.toString().padStart(2, '0')}:00`), datasets: [{ label: 'Voos por Hora', data: hourlyCounts, borderColor: 'rgba(102, 126, 234, 1)', backgroundColor: 'rgba(102, 126, 234, 0.1)', fill: true, tension: 0.4 }] }, options: { responsive: true, maintainAspectRatio: false } }); const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']; const dayCounts = Array(7).fill(0); data.forEach(flight => { if (flight.timestamp) { const day = new Date(flight.timestamp).getUTCDay(); dayCounts[day]++; } }); charts.dayOfWeek = new Chart('dayOfWeekChart', { type: 'bar', data: { labels: days, datasets: [{ label: 'Voos', data: dayCounts, backgroundColor: 'rgba(239, 68, 68, 0.8)', borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } } }); const aircraftCounts = data.reduce((acc, flight) => { const item = flight['tipo_aeronave'] || 'N/A'; acc[item] = (acc[item] || 0) + 1; return acc; }, {}); delete aircraftCounts['N/A']; const topAircraft = Object.entries(aircraftCounts).sort(([,a],[,b]) => b - a).slice(0, 5); charts.aircraft = new Chart('aircraftTypesChart', { type: 'bar', data: { labels: topAircraft.map(([item]) => item), datasets: [{ label: 'Voos', data: topAircraft.map(([,count]) => count), backgroundColor: 'rgba(139, 92, 246, 0.8)', borderRadius: 6 }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } } }); }
+
+            // ================== LÓGICA DE EXECUÇÃO E EVENT LISTENERS ==================
+
+            auth.onAuthStateChanged(user => { 
+                if (user) { 
+                    loginOverlay.classList.add('hidden'); 
+                    mainApp.classList.remove('hidden'); 
+                    userInfo.classList.remove('hidden'); 
+                    userEmail.textContent = user.email; 
+                    fetchUploadHistory(); 
+                } else { 
+                    loginOverlay.classList.remove('hidden'); 
+                    mainApp.classList.add('hidden'); 
+                    userInfo.classList.add('hidden'); 
+                } 
+                lucide.createIcons(); 
+            });
+
+            loginForm.addEventListener('submit', (e) => { e.preventDefault(); const email = document.getElementById('email').value; const password = document.getElementById('password').value; loginError.textContent = ''; auth.signInWithEmailAndPassword(email, password).catch(error => { console.error('Erro de login:', error); loginError.textContent = 'E-mail ou senha inválidos.'; }); });
+            logoutButton.addEventListener('click', () => { auth.signOut(); });
+            
+            uploadForm.addEventListener('submit', async (e) => { 
+                e.preventDefault(); 
+                if (dataFile.files.length === 0) { 
+                    showToast('Por favor, selecione uma pasta com ficheiros.', 'error'); 
+                    return; 
+                } 
+                const formData = new FormData(); 
+                for (const file of dataFile.files) { 
+                    formData.append('dataFiles', file, file.webkitRelativePath); 
+                } 
+                toggleLoading(true); 
+                try { 
+                    const user = auth.currentUser; 
+                    if (!user) { throw new Error("Sessão expirada. Faça login novamente."); } 
+                    const token = await user.getIdToken(); 
+                    const response = await fetch('/api/upload', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, body: formData }); 
+                    if (!response.ok) { 
+                        const errorData = await response.json(); 
+                        throw new Error(errorData.error || 'Erro no servidor'); 
+                    } 
+                    const data = await response.json(); 
+                    processedFilesData = data.grouped_records; 
+                    allFlightData = processedFilesData.flatMap(group => group.records); 
+                    allFlightData.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)); 
+                    updateAerodromoFilter(); 
+                    applyFiltersAndRender(); 
+                    updateStatus(); 
+                    showToast(`${allFlightData.length} registos de ${processedFilesData.length} ficheiro(s) carregados!`, 'success'); 
+                    saveSection.classList.remove('hidden'); 
+                } catch (error) { 
+                    console.error('Erro no upload:', error); 
+                    showToast(error.message, 'error'); 
+                } finally { 
+                    toggleLoading(false); 
+                    dataFile.value = ''; 
+                    fileUploadText.textContent = 'Clique para selecionar uma pasta'; 
+                } 
+            });
+
+            saveAnalysisButton.addEventListener('click', async () => { 
+                const analysisName = document.getElementById('analysisName').value.trim(); 
+                if (!analysisName) { 
+                    showToast('Por favor, dê um nome para a análise.', 'error'); 
+                    return; 
+                } 
+                if (processedFilesData.length === 0) { 
+                    showToast('Não há dados de ficheiros recentes para salvar.', 'error'); 
+                    return; 
+                } 
+                showToast('A salvar análise na nuvem...', 'success', 0); 
+                saveAnalysisButton.disabled = true; 
+                try { 
+                    const user = auth.currentUser; 
+                    if (!user) { throw new Error("Sessão expirada."); } 
+                    const token = await user.getIdToken(); 
+                    const payload = { analysisName: analysisName, uploadData: processedFilesData }; 
+                    const response = await fetch('/api/save_records', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); 
+                    
+                    if (!response.ok) { 
+                        let errorMsg = 'Erro ao salvar os dados';
+                        try {
+                            const result = await response.json();
+                            errorMsg = result.error || errorMsg;
+                        } catch (e) {
+                            console.error("A resposta do servidor não é JSON:", await response.text());
+                        }
+                        throw new Error(errorMsg); 
+                    } 
+                    
+                    const result = await response.json();
+                    showToast(result.message, 'success'); 
+                    fetchUploadHistory(); 
+                    processedFilesData = []; 
+                    document.getElementById('analysisName').value = ''; 
+                    saveSection.classList.add('hidden'); 
+                } catch (error) { 
+                    showToast(error.message, 'error'); 
+                } finally { 
+                    saveAnalysisButton.disabled = false; 
+                } 
+            });
+
+            uploadHistoryList.addEventListener('click', (e) => {
+                const item = e.target.closest('[data-upload-id]');
+                const deleteButton = e.target.closest('.delete-upload-btn');
+                
+                if (deleteButton) {
+                    e.stopPropagation(); // Impede que o evento de carregar seja disparado
+                    deleteUpload(deleteButton.dataset.uploadId);
+                } else if (item) {
+                    loadRecords(item.dataset.uploadId);
+                }
+            });
+
+            runAnalysisButton.addEventListener('click', runAnalysis);
+            aerodromoFilter.addEventListener('change', applyFiltersAndRender);
+            dataFile.addEventListener('change', () => { fileUploadText.textContent = dataFile.files.length > 0 ? `${dataFile.files.length} arquivo(s) selecionado(s)` : 'Clique para selecionar uma pasta'; });
+            downloadCsvButton.addEventListener('click', () => { if (allFlightData.length === 0) { showToast('Nenhum dado para download.', 'error'); return; } const headers = ['Aerodromo', 'Data/Hora', 'Matrícula', 'Tipo Aeronave', 'Tipo Voo', 'Origem', 'Destino', 'Regra', 'Pista']; const csvContent = [ headers.join(','), ...allFlightData.map(f => [ f.aerodromo || '', f.timestamp || '', f.matricula || '', f.tipo_aeronave || '', f.flight_class || '', f.origem || '', f.destino || '', f.regra_voo || '', f.pista || '' ].join(',')) ].join('\n'); const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `dados_voo_${new Date().toISOString().split('T')[0]}.csv`; link.click(); showToast('Arquivo CSV baixado!', 'success'); });
+        });
+    </script>
+</body>
+</html>
