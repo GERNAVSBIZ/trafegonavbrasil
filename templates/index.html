@@ -123,10 +123,53 @@
             const updateStatus = () => { document.getElementById('loaded-count').textContent = allFlightData.length; document.getElementById('last-update').textContent = new Date().toLocaleTimeString('pt-BR'); }
             const destroyAllCharts = () => { Object.values(charts).forEach(chart => chart?.destroy()); charts = {}; }
 
-            const fetchUploadHistory = async () => { renderUploadHistory([]); try { const user = auth.currentUser; if (!user) return; const token = await user.getIdToken(); const response = await fetch('/api/get_uploads', { headers: { 'Authorization': 'Bearer ' + token } }); if (!response.ok) { throw new Error('Falha ao buscar histórico'); } const uploads = await response.json(); renderUploadHistory(uploads); } catch (error) { console.error('Erro ao buscar histórico:', error); uploadHistoryList.innerHTML = '<p class="text-sm text-red-500 text-center py-4">Erro ao carregar histórico.</p>'; } }
-            const runAnalysis = async () => { const startDate = analysisStartDate.value; const endDate = analysisEndDate.value; if (!startDate || !endDate) { showToast('Por favor, selecione as datas de início e fim.', 'error'); return; } showToast('Buscando e consolidando dados...', 'success', 0); runAnalysisButton.disabled = true; try { const user = auth.currentUser; if (!user) { throw new Error("Sessão expirada. Faça login novamente."); } const token = await user.getIdToken(); const response = await fetch(`/api/get_aggregated_data?start_date=${startDate}&end_date=${endDate}`, { headers: { 'Authorization': 'Bearer ' + token } }); if (!response.ok) { const err = await response.json(); throw new Error(err.error || "Falha ao buscar dados consolidados"); } allFlightData = await response.json(); allFlightData.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)); updateAerodromoFilter(); applyFiltersAndRender(); updateStatus(); showToast(`${allFlightData.length} registos totais carregados para o período!`, 'success'); } catch (error) { console.error('Erro na análise:', error); showToast(error.message, 'error'); } finally { runAnalysisButton.disabled = false; } }
+            const fetchUploadHistory = async () => { 
+                let savedUploads = []; // Armazena os dados do histórico
+                renderUploadHistory([]); 
+                try { 
+                    const user = auth.currentUser; 
+                    if (!user) return; 
+                    const token = await user.getIdToken(); 
+                    const response = await fetch('/api/get_uploads', { headers: { 'Authorization': 'Bearer ' + token } }); 
+                    if (!response.ok) { throw new Error('Falha ao buscar histórico'); } 
+                    savedUploads = await response.json();
+                    renderUploadHistory(savedUploads); 
+                } catch (error) { 
+                    console.error('Erro ao buscar histórico:', error); 
+                    uploadHistoryList.innerHTML = '<p class="text-sm text-red-500 text-center py-4">Erro ao carregar histórico.</p>'; 
+                }
+                return savedUploads;
+            }
 
-            const renderUploadHistory = (uploads) => { uploadHistoryList.innerHTML = ''; if (!uploads || uploads.length === 0) { uploadHistoryList.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">Nenhum histórico encontrado.</p>'; return; } uploads.forEach(upload => { const item = document.createElement('div'); item.className = 'p-3 rounded-lg flex justify-between items-center group hover:bg-gray-100'; item.innerHTML = ` <div data-upload-id="${upload.uploadId}" class="flex-grow cursor-pointer"> <p class="font-semibold text-sm text-gray-700">${upload.analysisName}</p> <p class="text-xs text-gray-500">${upload.recordCount} registos</p> </div>`; uploadHistoryList.appendChild(item); }); lucide.createIcons(); }
+            // CORREÇÃO: Função para carregar os registos de uma análise salva
+            const loadRecords = async (uploadId) => {
+                showToast('A carregar análise salva...', 'success', 0);
+                try {
+                    const user = auth.currentUser;
+                    if (!user) throw new Error("Sessão expirada.");
+                    const token = await user.getIdToken();
+                    const response = await fetch(`/api/get_records/${uploadId}`, { headers: { 'Authorization': 'Bearer ' + token } });
+                    if (!response.ok) {
+                        const err = await response.json();
+                        throw new Error(err.error || "Falha ao carregar registos");
+                    }
+                    allFlightData = await response.json();
+                    processedFilesData = []; // Limpa os dados de upload temporários
+                    saveSection.classList.add('hidden'); // Esconde a secção de salvar
+                    
+                    allFlightData.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                    updateAerodromoFilter();
+                    applyFiltersAndRender();
+                    updateStatus();
+                    showToast(`${allFlightData.length} registos carregados do histórico!`, 'success');
+
+                } catch (error) {
+                    console.error('Erro ao carregar registos:', error);
+                    showToast(error.message, 'error');
+                }
+            };
+            
+            const renderUploadHistory = (uploads) => { uploadHistoryList.innerHTML = ''; if (!uploads || uploads.length === 0) { uploadHistoryList.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">Nenhum histórico encontrado.</p>'; return; } uploads.forEach(upload => { const item = document.createElement('div'); item.className = 'p-3 rounded-lg flex justify-between items-center group hover:bg-gray-100 cursor-pointer'; item.dataset.uploadId = upload.uploadId; item.innerHTML = `<div> <p class="font-semibold text-sm text-gray-700">${upload.analysisName}</p> <p class="text-xs text-gray-500">${upload.recordCount} registos</p> </div>`; uploadHistoryList.appendChild(item); }); lucide.createIcons(); }
             const applyFiltersAndRender = () => { let tableData = [...allFlightData]; const selectedAerodromo = aerodromoFilter.value; tableFilters.forEach(input => { const column = input.dataset.column; const value = input.value.trim().toUpperCase(); if (value) { tableData = tableData.filter(f => { if (column === 'timestamp' && f.timestamp) { return formatDateTime(f.timestamp).includes(value); } return f[column]?.toUpperCase().includes(value); }); } }); renderTable(tableData); if (selectedAerodromo === 'all') { detailedView.classList.add('hidden'); macroView.classList.remove('hidden'); renderStats(allFlightData); renderAllMacroCharts(allFlightData); } else { macroView.classList.add('hidden'); detailedView.classList.remove('hidden'); const airportSpecificData = allFlightData.filter(f => f.aerodromo === selectedAerodromo); renderStats(airportSpecificData); renderDetailedCharts(airportSpecificData); } }
             const updateAerodromoFilter = () => { const currentSelection = aerodromoFilter.value; aerodromoFilter.innerHTML = '<option value="all">Visão Macro (Todos Aeródromos)</option>'; if (allFlightData.length > 0) { const aerodromos = [...new Set(allFlightData.map(f => f.aerodromo))].filter(a => a); aerodromos.sort().forEach(a => { const option = document.createElement('option'); option.value = a; option.textContent = `Visão Detalhada: ${a}`; aerodromoFilter.appendChild(option); }); if (aerodromos.includes(currentSelection)) { aerodromoFilter.value = currentSelection; } } }
             const renderTable = (data) => { tableBody.innerHTML = ''; if (data.length === 0) { const emptyMessage = allFlightData.length > 0 ? `<i data-lucide="search-x" class="w-12 h-12 mx-auto mb-4 text-gray-300"></i><p>Nenhum registo corresponde ao filtro.</p>` : `<i data-lucide="inbox" class="w-12 h-12 mx-auto mb-4 text-gray-300"></i><p>Aguardando análise de período...</p>`; tableBody.innerHTML = `<tr><td colspan="9" class="text-center p-12 text-gray-500">${emptyMessage}</td></tr>`; lucide.createIcons(); return; } const rows = data.map((f) => `<tr class="table-row border-b border-gray-100"><td class="px-4 py-3 font-semibold">${f.aerodromo || 'N/A'}</td><td class="px-4 py-3 font-medium">${formatDateTime(f.timestamp)}</td><td class="px-4 py-3">${f.matricula || 'N/A'}</td><td class="px-4 py-3">${f.tipo_aeronave || 'N/A'}</td><td class="px-4 py-3">${f.flight_class || 'N/A'}</td><td class="px-4 py-3">${f.origem || 'N/A'}</td><td class="px-4 py-3">${f.destino || 'N/A'}</td><td class="px-4 py-3"><span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${f.regra_voo === 'IFR' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">${f.regra_voo || 'N/A'}</span></td><td class="px-4 py-3">${f.pista || '-'}</td></tr>`).join(''); tableBody.innerHTML = rows; }
@@ -225,6 +268,14 @@
                 } 
             });
 
+            // CORREÇÃO: Adiciona o event listener para o histórico
+            uploadHistoryList.addEventListener('click', (e) => {
+                const item = e.target.closest('[data-upload-id]');
+                if (item) {
+                    loadRecords(item.dataset.uploadId);
+                }
+            });
+
             runAnalysisButton.addEventListener('click', runAnalysis);
             aerodromoFilter.addEventListener('change', applyFiltersAndRender);
             dataFile.addEventListener('change', () => { fileUploadText.textContent = dataFile.files.length > 0 ? `${dataFile.files.length} arquivo(s) selecionado(s)` : 'Clique para selecionar uma pasta'; });
@@ -233,4 +284,3 @@
     </script>
 </body>
 </html>
-
