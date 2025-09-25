@@ -153,9 +153,8 @@ def save_records():
         if not all_records_for_this_analysis:
             return jsonify({"error": "Nenhum registo para salvar"}), 400
 
-        # CORREÇÃO: Obtém a primeira e última data da análise
-        timestamps = [rec['timestamp'] for rec in all_records_for_this_analysis if rec.get('timestamp')]
-        timestamps.sort()
+        # CORREÇÃO: Assegura que apenas timestamps válidos são considerados e ordenados
+        timestamps = sorted([rec['timestamp'] for rec in all_records_for_this_analysis if rec.get('timestamp')])
         start_date = timestamps[0] if timestamps else None
         end_date = timestamps[-1] if timestamps else None
 
@@ -165,8 +164,8 @@ def save_records():
             'createdAt': firestore.SERVER_TIMESTAMP,
             'analysisName': analysis_name,
             'recordCount': len(all_records_for_this_analysis),
-            'startDate': start_date, # Salva a data de início
-            'endDate': end_date      # Salva a data de fim
+            'startDate': start_date,
+            'endDate': end_date
         })
         
         batch = db.batch()
@@ -202,10 +201,11 @@ def get_uploads():
         results = []
         for doc in query.stream():
             doc_data = doc.to_dict()
+            # MELHORIA: Passa as datas de início e fim para o frontend
             results.append({
                 'uploadId': doc.id,
                 'recordCount': doc_data.get('recordCount'),
-                'analysisName': doc_data.get('analysisName', f"Análise de {doc_data.get('createdAt').strftime('%d/%m/%Y') if doc_data.get('createdAt') else 'data antiga'}"),
+                'analysisName': doc_data.get('analysisName', 'Análise Sem Nome'),
                 'startDate': doc_data.get('startDate'),
                 'endDate': doc_data.get('endDate')
             })
@@ -236,4 +236,3 @@ def get_records(upload_id):
 
 if __name__ == '__main__':
     app.run(debug=True)
-
